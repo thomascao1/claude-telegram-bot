@@ -135,10 +135,13 @@ export function checkCommandSafety(
       // Simple parsing: extract arguments after rm
       const rmMatch = command.match(/rm\s+(.+)/i);
       if (rmMatch) {
-        const args = rmMatch[1]!.split(/\s+/);
+        // Stop parsing args at shell operators (redirects, pipes, &&, ||, ;)
+        const argsPart = rmMatch[1]!.split(/[|;&]|>>|<<|>|<|\s2>&1/)[0]!;
+        const args = argsPart.trim().split(/\s+/);
         for (const arg of args) {
-          // Skip flags
-          if (arg.startsWith("-") || arg.length <= 1) continue;
+          // Skip flags, empty, or shell operators that survived split
+          if (!arg || arg.startsWith("-") || arg.length <= 1) continue;
+          if (/^\d?[<>&]/.test(arg)) continue; // 2>&1, >file etc.
 
           // Check if path is allowed
           if (!isPathAllowed(arg)) {
